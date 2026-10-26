@@ -1,0 +1,222 @@
+"""Tests for services, the websocket API, config flow, repairs and diagnostics."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+from homeassistant import config_entries
+from homeassistant.components.repairs import DOMAIN as REPAIRS_DOMAIN
+from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.exceptions import ServiceValidationError
+from homeassistant.helpers import entity_registry as er
+from homeassistant.setup import async_setup_component
+import pytest
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_mock_service
+
+from custom_components.smart_heating_schedule.const import (
+    CONF_ADMIN_ONLY,
+    CONF_PRESENCE_ENTITY,
+    DOMAIN,
+)
+from custom_components.smart_heating_schedule.diagnostics import (
+    async_get_config_entry_diagnostics,
+)
+from custom_components.smart_heating_schedule.models import default_room
+
+from .conftest import CLIMATE, setup_integration
+
+TZ = ZoneInfo("Europe/Amsterdam")
+
+
+@pytest.fixture(autouse=True)
+async def setup(hass: HomeAssistant, freezer, heat_state) -> None:
+    """Fixed time, someone home and a thermostat."""
+    await hass.config.async_set_time_zone("Europe/Amsterdam")
+    freezer.move_to(datetime(2026, 10, 26, 12, 0, tzinfo=TZ))
+    hass.states.async_set("zone.home", "1")
+    hass.states.async_set(CLIMATE, "heat", heat_state)
+    hass.states.async_set("climate.bedroom", "heat", heat_state)
+
+
+async def test_services(hass: HomeAssistant, config_entry: MockConfigEntry) -> None:
+    calls = async_mock_service(hass, "climate", "set_temperature")
+    await setup_integration(hass, config_entry)
+
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN, "get_schedule", {"entity_id": CLIMATE}, blocking=True, return_response=True
+        )
+
+    schedule = default_room(CLIMATE, "°C").as_dict()
+    schedule["home"]["days"]["mon"][1]["temperature"] = 21.5
+    await hass.services.async_call(
+        DOMAIN,
+        "set_schedule",
+        {"entity_id": CLIMATE, "home": schedule["home"]},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    assert calls[-1].data["temperature"] == 21.5
+
+    response = await hass.services.async_call(
+        DOMAIN, "get_schedule", {"entity_id": CLIMATE}, blocking=True, return_response=True
+    )
+    assert response["unit"] == "°C"
+    assert response["home"]["days"]["mon"][1]["temperature"] == 21.5
+
+    schedule["home"]["days"]["mon"][0]["start"] = "01:00"
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN, "set_schedule", {"entity_id": CLIMATE, "home": schedule["home"]}, blocking=True
+        )
+
+    await hass.services.async_call(DOMAIN, "resume_schedule", {"entity_id": CLIMATE}, blocking=True)
+    assert len(calls) == 2
+
+
+async def test_websocket(
+    hass: HomeAssistant, config_entry: MockConfigEntry, hass_ws_client
+) -> None:
+    calls = async_mock_service(hass, "climate", "set_temperature")
+    await setup_integration(hass, config_entry)
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id({"type": f"{DOMAIN}/subscribe"})
+    assert (await client.receive_json())["success"]
+    event = (await client.receive_json())["event"]
+    assert event["rooms"] == []
+    assert event["unit"] == "°C"
+    assert event["presence"]["profile"] == "home"
+
+    await client.send_json_auto_id({"type": f"{DOMAIN}/room/add", "entity_id": CLIMATE})
+    while "result" not in (msg := await client.receive_json()) and msg.get("type") != "result":
+        pass
+    assert msg["success"]
+    await hass.async_block_till_done()
+    assert calls[-1].data["temperature"] == 20
+
+    room = default_room(CLIMATE, "°C").as_dict()
+    room["away"]["days"]["sat"] = [{"start": "00:00", "temperature": 12}]
+    await client.send_json_auto_id(
+        {"type": f"{DOMAIN}/room/save", "entity_id": CLIMATE, "away": room["away"]}
+    )
+    msg = await _result(client)
+    assert msg["success"]
+    assert msg["result"]["away"]["days"]["sat"] == [{"start": "00:00", "temperature": 12.0}]
+
+    room["home"]["days"]["mon"] = []
+    await client.send_json_auto_id(
+        {"type": f"{DOMAIN}/room/save", "entity_id": CLIMATE, "home": room["home"]}
+    )
+    msg = await _result(client)
+    assert not msg["success"]
+    assert msg["error"]["code"] == "invalid_format"
+
+    await client.send_json_auto_id(
+        {"type": f"{DOMAIN}/room/copy", "entity_id": CLIMATE, "targets": ["climate.bedroom"]}
+    )
+    assert (await _result(client))["success"]
+    engine = config_entry.runtime_data
+    assert engine.store.rooms["climate.bedroom"].away.blocks_for_weekday(5)[0].temperature == 12
+
+    await client.send_json_auto_id({"type": f"{DOMAIN}/presence/set", "mode": "away"})
+    assert (await _result(client))["success"]
+    assert engine.profile == "away"
+
+    await client.send_json_auto_id({"type": f"{DOMAIN}/room/remove", "entity_id": CLIMATE})
+    assert (await _result(client))["success"]
+    assert list(engine.store.rooms) == ["climate.bedroom"]
+
+
+async def test_websocket_requires_admin(
+    hass: HomeAssistant, config_entry: MockConfigEntry, hass_ws_client, hass_admin_user
+) -> None:
+    await setup_integration(hass, config_entry)
+    hass_admin_user.groups = []
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/room/add", "entity_id": CLIMATE})
+    msg = await client.receive_json()
+    assert msg["error"]["code"] == "unauthorized"
+
+
+async def _result(client) -> dict:
+    while (msg := await client.receive_json())["type"] != "result":
+        pass
+    return msg
+
+
+async def test_config_and_options_flow(hass: HomeAssistant) -> None:
+    assert await async_setup_component(hass, "http", {})
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    assert result["type"] is FlowResultType.FORM
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    entry = result["result"]
+    assert entry.options == {CONF_PRESENCE_ENTITY: "zone.home", CONF_ADMIN_ONLY: False}
+    await hass.async_block_till_done()
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "single_instance_allowed"
+
+    hass.states.async_set("binary_sensor.anyone_home", "off")
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {CONF_PRESENCE_ENTITY: "binary_sensor.anyone_home", CONF_ADMIN_ONLY: True},
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    engine = entry.runtime_data
+    assert engine.presence_entity == "binary_sensor.anyone_home"
+    assert engine.profile == "away"
+    assert hass.data["frontend_panels"]["smart-heating-schedule"].require_admin
+
+
+async def test_repair_flow(
+    hass: HomeAssistant, config_entry: MockConfigEntry, hass_client, heat_state
+) -> None:
+    async_mock_service(hass, "climate", "set_temperature")
+    registry = er.async_get(hass)
+    hass.states.async_remove(CLIMATE)
+    registry.async_get_or_create("climate", "test", "abc", suggested_object_id="living_room")
+    hass.states.async_set(CLIMATE, "heat", heat_state)
+    await setup_integration(hass, config_entry)
+    assert await async_setup_component(hass, REPAIRS_DOMAIN, {})
+    engine = config_entry.runtime_data
+    await engine.async_add_room(CLIMATE)
+    registry.async_remove(CLIMATE)
+    await hass.async_block_till_done()
+
+    client = await hass_client()
+    resp = await client.post(
+        "/api/repairs/issues/fix",
+        json={"handler": DOMAIN, "issue_id": f"entity_missing_{CLIMATE}"},
+    )
+    flow = await resp.json()
+    assert flow["type"] == "menu"
+    resp = await client.post(
+        f"/api/repairs/issues/fix/{flow['flow_id']}", json={"next_step_id": "reassign"}
+    )
+    flow = await resp.json()
+    resp = await client.post(
+        f"/api/repairs/issues/fix/{flow['flow_id']}", json={"entity_id": "climate.bedroom"}
+    )
+    assert (await resp.json())["type"] == "create_entry"
+    await hass.async_block_till_done()
+    assert list(engine.store.rooms) == ["climate.bedroom"]
+
+
+async def test_diagnostics(hass: HomeAssistant, config_entry: MockConfigEntry) -> None:
+    async_mock_service(hass, "climate", "set_temperature")
+    await setup_integration(hass, config_entry)
+    await config_entry.runtime_data.async_add_room(CLIMATE)
+    diagnostics = await async_get_config_entry_diagnostics(hass, config_entry)
+    assert diagnostics["state"]["rooms"][0]["entity_id"] == CLIMATE
+    assert CLIMATE in diagnostics["last_applied"]

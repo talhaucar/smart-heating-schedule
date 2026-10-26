@@ -1,0 +1,29 @@
+resume_schedule:
+  target:
+    entity:
+      domain: climate
+
+get_schedule:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          domain: climate
+
+set_schedule:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          domain: climate
+    enabled:
+      selector:
+        boolean:
+    home:
+      selector:
+        object:
+    away:
+      selector:
+        object:
