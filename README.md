@@ -78,9 +78,25 @@ Presence changes are debounced by a few seconds. If presence is unknown, the hom
 
 Many thermostats also run a schedule internally. Make sure it doesn't fight this one:
 
-- **Tado**: open the Tado integration options and set the overlay **fallback** to *Manual*. Otherwise Tado returns to its own app schedule at its own block changes. The Tado API has a daily request quota; this integration only sends a command when a block changes.
+- **Tado**: see [Tado](#tado) below.
 - **Netatmo, Honeywell, Ecobee and similar**: commands from Home Assistant are usually temporary holds. Check the device's "hold until" setting, or use a flat schedule in the vendor app.
 - **Radiator valves with a local schedule (Z2M/ZHA)**: switch the valve to manual mode or disable its internal schedule.
+
+#### Tado
+
+When Home Assistant sets a temperature, Tado treats it as a **manual change** on top of the schedule in the Tado app. By default Tado ends a manual change according to each room's setting in the Tado app. If that is "until the next time block", Tado goes back to its own app schedule at its own block times, and overrules this schedule until its next block.
+
+Make manual changes last until the next command, in one of these two ways:
+
+- **In Home Assistant (recommended, covers all rooms at once):**
+  1. Go to **Settings → Devices & services → Tado**.
+  2. Click **Configure** (the gear icon next to your Tado account).
+  3. Set the **fallback mode** to **`MANUAL`** ("Don't change until you cancel") and submit. No restart is needed.
+- **In the Tado app (per room):** leave the fallback mode in Home Assistant on `TADO_DEFAULT`, which follows the app. Then in the Tado app open **Settings → Rooms & Devices**, pick a room, and set its manual control duration to **until you cancel** (not "until the next automatic change" or a timer). Repeat for every scheduled room. The exact menu names differ a little between app versions.
+
+Afterwards the Tado app shows these rooms as manually controlled. That is expected: this integration is now their schedule, and the schedule in the Tado app is no longer used for them.
+
+The Tado API has a daily request quota. This integration only sends a command when the wanted temperature changes, so it uses very few requests.
 
 ## Entities
 
