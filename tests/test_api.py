@@ -141,6 +141,19 @@ async def test_websocket_requires_admin(
     assert msg["error"]["code"] == "unauthorized"
 
 
+async def test_websocket_resume_allowed_for_users(
+    hass: HomeAssistant, config_entry: MockConfigEntry, hass_ws_client, hass_admin_user
+) -> None:
+    calls = async_mock_service(hass, "climate", "set_temperature")
+    await setup_integration(hass, config_entry)
+    await config_entry.runtime_data.async_add_room(CLIMATE)
+    hass_admin_user.groups = []
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/room/resume", "entity_id": CLIMATE})
+    assert (await _result(client))["success"]
+    assert len(calls) == 2
+
+
 async def _result(client) -> dict:
     while (msg := await client.receive_json())["type"] != "result":
         pass

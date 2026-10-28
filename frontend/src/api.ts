@@ -20,5 +20,9 @@ export const saveRoom = (
 export const copyRoom = (hass: HomeAssistant, entityId: string, targets: string[]) =>
   hass.callWS({ type: `${DOMAIN}/room/copy`, entity_id: entityId, targets });
 
+/** Undo manual changes: set the thermostat back to the current block. */
+export const resumeRoom = (hass: HomeAssistant, entityId: string) =>
+  hass.callWS({ type: `${DOMAIN}/room/resume`, entity_id: entityId });
+
 export const setPresenceMode = (hass: HomeAssistant, mode: PresenceMode) =>
   hass.callWS({ type: `${DOMAIN}/presence/set`, mode });

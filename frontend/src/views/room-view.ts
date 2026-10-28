@@ -4,6 +4,7 @@ import { property, state } from "lit/decorators.js";
 
 import { copyRoom, removeRoom, saveRoom } from "../api";
 import "../components/day-card";
+import "../components/resume-row";
 import "../components/dialog";
 import "../components/segment-control";
 import "../dialogs/block-dialog";
@@ -174,6 +175,13 @@ export class RoomView extends LitElement {
               readOnly,
             )}
           </div>
+          ${this.room.enabled && this.room.status.overridden
+            ? html`<shs-resume-row
+                .hass=${this.hass}
+                .entityId=${this.room.entity_id}
+                .localize=${this.localize}
+              ></shs-resume-row>`
+            : nothing}
         </ha-card>
         ${readOnly ? html`<p class="secondary notice">${this.localize("read_only")}</p>` : nothing}
 
@@ -287,6 +295,11 @@ export class RoomView extends LitElement {
         display: flex;
         gap: 16px;
         justify-content: space-between;
+      }
+      .summary shs-resume-row {
+        border-top: 1px solid var(--divider-color);
+        margin-top: 12px;
+        padding-top: 4px;
       }
       .summary-title {
         font-size: 16px;

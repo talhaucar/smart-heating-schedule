@@ -54,6 +54,7 @@ ATTR_BLOCK_END: Final = "block_end"
 ATTR_NEXT_TEMPERATURE: Final = "next_temperature"
 ATTR_HEATING_OFF: Final = "heating_off"
 ATTR_PENDING: Final = "pending"
+ATTR_OVERRIDDEN: Final = "overridden"
 ATTR_LAST_ERROR: Final = "last_error"
 
 SERVICE_RESUME_SCHEDULE: Final = "resume_schedule"

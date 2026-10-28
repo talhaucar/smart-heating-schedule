@@ -62,19 +62,14 @@ def _heating_mode(state: State) -> HVACMode | None:
     return None
 
 
-async def async_apply_temperature(
-    hass: HomeAssistant,
-    state: State,
-    temperature: float | None,
-    unit: str,
-    context: Context | None = None,
-) -> bool:
-    """Make a climate entity follow a scheduled temperature.
+def _service_calls(
+    state: State, temperature: float | None, unit: str
+) -> list[tuple[str, dict[str, object]]]:
+    """Return the climate service calls that make an entity follow a temperature.
 
     ``None`` means heating off: the entity is switched off, or set to its
     minimum temperature (frost protection) when it cannot be switched off.
-    Returns whether a service call was made; nothing is sent when the entity
-    is already in the wanted state.
+    The list is empty when the entity is already in the wanted state.
     """
     attrs = state.attributes
     entity_id = state.entity_id
@@ -84,15 +79,10 @@ async def async_apply_temperature(
     if temperature is None:
         if HVACMode.OFF in modes:
             if state.state == HVACMode.OFF:
-                return False
-            await hass.services.async_call(
-                CLIMATE_DOMAIN,
-                SERVICE_SET_HVAC_MODE,
-                {ATTR_ENTITY_ID: entity_id, ATTR_HVAC_MODE: HVACMode.OFF},
-                blocking=True,
-                context=context,
-            )
-            return True
+                return []
+            return [
+                (SERVICE_SET_HVAC_MODE, {ATTR_ENTITY_ID: entity_id, ATTR_HVAC_MODE: HVACMode.OFF})
+            ]
         temperature = min_temp
 
     temperature = min(max(temperature, min_temp), max_temp)
@@ -102,7 +92,7 @@ async def async_apply_temperature(
 
     if ClimateEntityFeature.TARGET_TEMPERATURE in features:
         if hvac_mode is None and attrs.get(ATTR_TEMPERATURE) == temperature:
-            return False
+            return []
         data[ATTR_TEMPERATURE] = temperature
     elif ClimateEntityFeature.TARGET_TEMPERATURE_RANGE in features:
         high = attrs.get(ATTR_TARGET_TEMP_HIGH)
@@ -113,26 +103,41 @@ async def async_apply_temperature(
             and attrs.get(ATTR_TARGET_TEMP_LOW) == temperature
             and attrs.get(ATTR_TARGET_TEMP_HIGH) == high
         ):
-            return False
+            return []
         data[ATTR_TARGET_TEMP_LOW] = temperature
         data[ATTR_TARGET_TEMP_HIGH] = high
     elif hvac_mode is None:
         # No setpoint support and already heating: nothing we can change.
-        return False
+        return []
     else:
-        await hass.services.async_call(
-            CLIMATE_DOMAIN,
-            SERVICE_SET_HVAC_MODE,
-            {ATTR_ENTITY_ID: entity_id, ATTR_HVAC_MODE: hvac_mode},
-            blocking=True,
-            context=context,
-        )
-        return True
+        return [(SERVICE_SET_HVAC_MODE, {ATTR_ENTITY_ID: entity_id, ATTR_HVAC_MODE: hvac_mode})]
 
     if hvac_mode is not None:
         data[ATTR_HVAC_MODE] = hvac_mode
-    _LOGGER.debug("Setting %s to %s", entity_id, data)
-    await hass.services.async_call(
-        CLIMATE_DOMAIN, SERVICE_SET_TEMPERATURE, data, blocking=True, context=context
-    )
-    return True
+    return [(SERVICE_SET_TEMPERATURE, data)]
+
+
+def follows_temperature(state: State, temperature: float | None, unit: str) -> bool:
+    """Return whether a climate entity is already in the state a temperature asks for."""
+    return not _service_calls(state, temperature, unit)
+
+
+async def async_apply_temperature(
+    hass: HomeAssistant,
+    state: State,
+    temperature: float | None,
+    unit: str,
+    context: Context | None = None,
+) -> bool:
+    """Make a climate entity follow a scheduled temperature.
+
+    Returns whether a service call was made; nothing is sent when the entity
+    is already in the wanted state.
+    """
+    calls = _service_calls(state, temperature, unit)
+    for service, data in calls:
+        _LOGGER.debug("Setting %s to %s", state.entity_id, data)
+        await hass.services.async_call(
+            CLIMATE_DOMAIN, service, data, blocking=True, context=context
+        )
+    return bool(calls)

@@ -1,0 +1,134 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Smart Heating Schedule",
+        "description": "Aggiunge alla barra laterale una pagina Smart Heating Schedule in cui crei programmazioni settimanali A casa e Fuori casa per i tuoi termostati."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Già configurato. È possibile una sola configurazione."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni di Smart Heating Schedule",
+        "data": {
+          "presence_entity": "Entità di presenza",
+          "admin_only": "Mostra il pannello solo agli amministratori"
+        },
+        "data_description": {
+          "presence_entity": "Sceglie tra le programmazioni A casa e Fuori casa quando la modalità presenza è Auto. Una zona conta come fuori casa quando non c'è nessuno; una persona, un tracker di dispositivo o un gruppo quando non è a casa; un sensore binario o un input booleano quando è spento.",
+          "admin_only": "Gli utenti non amministratori possono vedere le programmazioni ma mai modificarle."
+        }
+      }
+    }
+  },
+  "entity": {
+    "select": {
+      "presence_mode": {
+        "name": "Modalità presenza",
+        "state": {
+          "auto": "Auto",
+          "home": "A casa",
+          "away": "Fuori casa"
+        }
+      }
+    },
+    "sensor": {
+      "active_profile": {
+        "name": "Programmazione attiva",
+        "state": {
+          "home": "A casa",
+          "away": "Fuori casa"
+        }
+      },
+      "scheduled_temperature": {
+        "name": "Temperatura programmata"
+      }
+    },
+    "switch": {
+      "smart_schedule": {
+        "name": "Programmazione intelligente"
+      }
+    }
+  },
+  "exceptions": {
+    "not_loaded": {
+      "message": "Smart Heating Schedule non è configurato."
+    },
+    "room_not_found": {
+      "message": "{entity_id} non ha una programmazione intelligente."
+    },
+    "invalid_schedule": {
+      "message": "Programmazione non valida: {error}"
+    }
+  },
+  "issues": {
+    "entity_missing": {
+      "title": "Il termostato programmato {entity_id} non esiste più",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "Il termostato {entity_id} non esiste più",
+            "description": "Esiste una programmazione intelligente per {entity_id}, ma l'entità è stata rimossa. Sposta la programmazione su un altro termostato oppure eliminala.",
+            "menu_options": {
+              "reassign": "Sposta la programmazione su un altro termostato",
+              "remove": "Elimina la programmazione"
+            }
+          },
+          "reassign": {
+            "title": "Sposta programmazione",
+            "description": "Scegli il termostato che deve ricevere la programmazione di {entity_id}.",
+            "data": {
+              "entity_id": "Termostato"
+            }
+          },
+          "remove": {
+            "title": "Elimina programmazione",
+            "description": "La programmazione di {entity_id} verrà eliminata."
+          }
+        }
+      }
+    }
+  },
+  "services": {
+    "resume_schedule": {
+      "name": "Riprendi programmazione",
+      "description": "Applica di nuovo la fascia oraria attuale, annullando le modifiche manuali fatte sul termostato."
+    },
+    "get_schedule": {
+      "name": "Ottieni programmazione",
+      "description": "Restituisce le programmazioni A casa e Fuori casa di un termostato.",
+      "fields": {
+        "entity_id": {
+          "name": "Termostato",
+          "description": "L'entità clima di cui restituire la programmazione."
+        }
+      }
+    },
+    "set_schedule": {
+      "name": "Imposta programmazione",
+      "description": "Crea o sostituisce la programmazione di un termostato. Usa l'output di Ottieni programmazione come esempio.",
+      "fields": {
+        "entity_id": {
+          "name": "Termostato",
+          "description": "L'entità clima da programmare."
+        },
+        "enabled": {
+          "name": "Attiva",
+          "description": "Se la programmazione è attiva."
+        },
+        "home": {
+          "name": "Programmazione A casa",
+          "description": "La programmazione settimanale usata quando c'è qualcuno in casa."
+        },
+        "away": {
+          "name": "Programmazione Fuori casa",
+          "description": "La programmazione settimanale usata quando non c'è nessuno in casa."
+        }
+      }
+    }
+  }
+}

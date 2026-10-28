@@ -1,8 +1,9 @@
-import { mdiFire, mdiHome, mdiMapMarkerRadius, mdiMenu, mdiPlus, mdiThermostat, mdiWalk } from "@mdi/js";
+import { mdiHome, mdiMapMarkerRadius, mdiMenu, mdiPlus, mdiThermostat, mdiWalk } from "@mdi/js";
 import { css, html, LitElement, nothing } from "lit";
 import { property, state } from "lit/decorators.js";
 
 import { addRoom, saveRoom, setPresenceMode } from "../api";
+import "../components/resume-row";
 import "../components/schedule-bar";
 import "../components/segment-control";
 import "../dialogs/entity-picker-dialog";
@@ -139,8 +140,6 @@ export class OverviewView extends LitElement {
       timeZone: this.hass.config.time_zone,
     });
     const current = stateObj?.attributes.current_temperature;
-    const target = stateObj?.attributes.temperature;
-    const heating = stateObj?.attributes.hvac_action === "heating";
     const area = areaName(this.hass, room.entity_id);
     const open = () => navigate(`${this.prefix}/room/${room.entity_id}`);
 
@@ -148,7 +147,7 @@ export class OverviewView extends LitElement {
       <div class="room-header">
         <button class="room-title" @click=${open}>
           <span class="name">${entityName(this.hass, room.entity_id)}</span>
-          ${area ? html`<span class="secondary area">${area}</span>` : nothing}
+          <span class="secondary area">${area ?? this.localize("overview.no_area")}</span>
         </button>
         ${renderSwitch(
           room.enabled,
@@ -161,19 +160,7 @@ export class OverviewView extends LitElement {
         <div class="climate">
           ${typeof current === "number"
             ? html`<span class="current">${formatTemperature(current, unit, 0.1, false, language)}</span>`
-            : nothing}
-          ${stateObj && stateObj.state !== "unavailable"
-            ? html`<span class="secondary target">
-                ${heating ? html`<ha-svg-icon class="flame" .path=${mdiFire}></ha-svg-icon>` : nothing}
-                ${stateObj.state === "off"
-                  ? this.localize("room.off")
-                  : typeof target === "number"
-                    ? formatTemperature(target, unit, limits.step, false, language)
-                    : typeof stateObj.attributes.target_temp_low === "number"
-                      ? `${formatTemperature(stateObj.attributes.target_temp_low, unit, limits.step, false, language)} – ${formatTemperature(stateObj.attributes.target_temp_high, unit, limits.step, false, language)}`
-                      : nothing}
-              </span>`
-            : html`<span class="secondary">${this.hass.states[room.entity_id]?.state ?? "—"}</span>`}
+            : html`<span class="secondary">${stateObj?.state === "unavailable" ? stateObj.state : "—"}</span>`}
         </div>
         <shs-schedule-bar
           .blocks=${blocks}
@@ -186,6 +173,13 @@ export class OverviewView extends LitElement {
         ></shs-schedule-bar>
         <div class="status ${status.error ? "error" : "secondary"}">${status.text}</div>
       </button>
+      ${room.enabled && room.status.overridden
+        ? html`<shs-resume-row
+            .hass=${this.hass}
+            .entityId=${room.entity_id}
+            .localize=${this.localize}
+          ></shs-resume-row>`
+        : nothing}
     </ha-card>`;
   }
 
@@ -271,7 +265,7 @@ export class OverviewView extends LitElement {
         font-weight: 500;
       }
       .area {
-        font-size: 13px;
+        font-size: 14px;
       }
       .room-body {
         display: flex;
@@ -288,18 +282,13 @@ export class OverviewView extends LitElement {
         font-size: 32px;
         font-weight: 400;
       }
-      .target {
-        align-items: center;
-        display: inline-flex;
-        gap: 4px;
-        font-size: 16px;
-      }
-      .flame {
-        color: var(--state-climate-heat-color, #ff8100);
-        --mdc-icon-size: 18px;
-      }
       .status {
         font-size: 14px;
+      }
+      shs-resume-row {
+        border-top: 1px solid var(--divider-color);
+        margin-top: 12px;
+        padding-top: 4px;
       }
       .empty {
         align-items: center;

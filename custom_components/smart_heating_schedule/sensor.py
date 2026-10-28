@@ -16,6 +16,7 @@ from .const import (
     ATTR_HEATING_OFF,
     ATTR_LAST_ERROR,
     ATTR_NEXT_TEMPERATURE,
+    ATTR_OVERRIDDEN,
     ATTR_PENDING,
     ATTR_PROFILE,
     CONF_PRESENCE_ENTITY,
@@ -106,5 +107,6 @@ class ScheduledTemperatureSensor(RoomEntity, SensorEntity):
             ATTR_NEXT_TEMPERATURE: status["next_temperature"],
             ATTR_HEATING_OFF: status["temperature"] is None,
             ATTR_PENDING: status["pending"],
+            ATTR_OVERRIDDEN: status["overridden"],
             ATTR_LAST_ERROR: status["last_error"],
         }

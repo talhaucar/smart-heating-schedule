@@ -46,8 +46,10 @@ export class SegmentControl extends LitElement {
           ?disabled=${this.disabled && !active}
           @click=${() => this._select(option.value)}
         >
-          ${option.icon ? html`<ha-svg-icon .path=${option.icon}></ha-svg-icon>` : nothing}
-          <span>${option.label}</span>
+          <span class="inner">
+            ${option.icon ? html`<ha-svg-icon .path=${option.icon}></ha-svg-icon>` : nothing}
+            <span class="label">${option.label}</span>
+          </span>
         </button>`;
       })}
     </div>`;
@@ -67,18 +69,17 @@ export class SegmentControl extends LitElement {
       padding: 3px;
     }
     button {
-      align-items: center;
       background: none;
       border: none;
       border-radius: 999px;
       color: var(--secondary-text-color);
+      container-type: inline-size;
       cursor: pointer;
       display: flex;
       flex: 1;
       font: inherit;
       font-size: 16px;
       font-weight: 500;
-      gap: 8px;
       justify-content: center;
       min-width: 0;
       padding: 9px 12px;
@@ -88,10 +89,31 @@ export class SegmentControl extends LitElement {
       font-size: 14px;
       padding: 6px 8px;
     }
-    button span {
+    .inner {
+      align-items: center;
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      max-width: 100%;
+      min-width: 0;
+    }
+    .label {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    /* Too narrow for icon and label side by side (phones, long words in some
+       languages): put the icon above the label so the label gets the width. */
+    @container (max-width: 120px) {
+      .inner {
+        flex-direction: column;
+        gap: 2px;
+        width: 100%;
+      }
+      .label {
+        font-size: 13px;
+        max-width: 100%;
+      }
     }
     button.active {
       background: var(

@@ -22,6 +22,8 @@ export interface RoomStatus {
   end: string | null;
   next_temperature: number | null;
   pending: boolean;
+  /** The thermostat was changed by hand and no longer follows the current block. */
+  overridden: boolean;
   last_error: string | null;
 }
 

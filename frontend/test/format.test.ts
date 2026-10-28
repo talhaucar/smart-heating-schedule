@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { celsiusColor, temperatureColor } from "../src/colors";
 import { firstWeekday, formatMinutes, uses12h, weekdayName, zonedTime } from "../src/format";
-import { localizer } from "../src/localize";
+import { localizer, translations } from "../src/localize";
 import { clamp, formatTemperature, limitsFor } from "../src/temperature";
 
 describe("temperatures", () => {
@@ -74,8 +74,31 @@ describe("time", () => {
 describe("localize", () => {
   it("translates with fallback to English", () => {
     expect(localizer("nl")("room.add_block")).toBe("Tijdsblok toevoegen");
-    expect(localizer("de")("room.add_block")).toBe("Add time block");
+    expect(localizer("de")("room.add_block")).toBe("Zeitblock hinzufügen");
+    expect(localizer("ja")("room.add_block")).toBe("Add time block");
     expect(localizer("nl-BE")("presence.away")).toBe("Afwezig");
+    expect(localizer("pt-BR")("presence.away")).toBe("Fora");
+    expect(localizer("zh-Hans")("presence.away")).toBe("离家");
+    expect(localizer("tr")("presence.away")).toBe("Dışarıda");
     expect(localizer("en")("status.until", { temperature: "20°", time: "22:00" })).toBe("20° until 22:00");
+  });
+
+  const flatten = (value: unknown, prefix = ""): Record<string, string> =>
+    typeof value === "string"
+      ? { [prefix]: value }
+      : Object.assign(
+          {},
+          ...Object.entries(value as object).map(([key, child]) => flatten(child, prefix ? `${prefix}.${key}` : key)),
+        );
+  const placeholders = (text: string) => (text.match(/\{\w+\}/g) ?? []).sort();
+  const english = flatten(translations.en);
+
+  it.each(Object.keys(translations))("%s keeps every placeholder", (language) => {
+    const strings = flatten(translations[language]);
+    expect(Object.keys(strings).sort()).toEqual(Object.keys(english).sort());
+    for (const [key, text] of Object.entries(strings)) {
+      expect(placeholders(text), `${language} ${key}`).toEqual(placeholders(english[key]));
+      expect(text.trim(), `${language} ${key}`).not.toBe("");
+    }
   });
 });

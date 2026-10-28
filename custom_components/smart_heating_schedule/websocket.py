@@ -28,6 +28,7 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
         ws_remove_room,
         ws_save_room,
         ws_copy_room,
+        ws_resume_room,
         ws_set_presence_mode,
     ):
         websocket_api.async_register_command(hass, command)
@@ -159,6 +160,21 @@ async def ws_copy_room(
 
     async def action(engine: ScheduleEngine) -> None:
         await engine.async_copy_room(msg["entity_id"], msg["targets"])
+
+    await _run(hass, connection, msg, action)
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): f"{DOMAIN}/room/resume", vol.Required("entity_id"): ENTITY_ID}
+)
+@websocket_api.async_response
+async def ws_resume_room(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Undo manual changes: set the thermostat back to the current block."""
+
+    async def action(engine: ScheduleEngine) -> None:
+        await engine.async_resume(msg["entity_id"])
 
     await _run(hass, connection, msg, action)
 

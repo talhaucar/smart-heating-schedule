@@ -97,7 +97,12 @@ export class Dialog extends LitElement {
       margin: 0 0 16px;
     }
     .content {
+      /* Scroll edge to edge, so rows with a hover background that sticks out
+         a little (lists) never cause a horizontal scrollbar. */
+      margin: 0 -24px;
+      overflow-x: hidden;
       overflow-y: auto;
+      padding: 0 24px;
     }
     .actions {
       align-items: center;

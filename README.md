@@ -1,19 +1,21 @@
 # Smart Heating Schedule
 
-Weekly heating schedules for **any thermostat** in Home Assistant, edited on a timeline that looks and works like the Tado° Smart Schedule.
+Weekly heating schedules for **any thermostat** in Home Assistant, edited on a timeline inspired by Tado's Smart Schedule.
 
 ![Room schedule](docs/images/room.png)
 
 The integration adds a **Smart Heating Schedule** page to the sidebar. On it you can:
 
+- see every thermostat at a glance: its room, current temperature and today's schedule
 - give each thermostat a weekly **Home** and **Away** schedule
 - see every day of the week (Monday to Sunday) as a coloured timeline, which expands into its time blocks
 - add, edit and delete time blocks on a 15-minute grid. Overlapping blocks are shortened or replaced, as in Tado.
 - set a block to a temperature or to **Off** (frost protection on devices that can't turn off)
 - copy one day and paste it onto another, or copy a whole schedule to other rooms
 - switch Home and Away automatically from presence (`zone.home` by default), or set it by hand
+- see when someone changed a thermostat by hand, and go back to the schedule with one tap (**Restore schedule**)
 
-It is vendor agnostic: it works with Tado, Netatmo, Zigbee/Z-Wave radiator valves, `generic_thermostat`, Ecobee, Nest and any other `climate` entity. Celsius and Fahrenheit both work, and the UI follows your Home Assistant theme, language (English and Dutch included) and 12/24-hour setting.
+It is vendor agnostic: it works with Tado, Netatmo, Zigbee/Z-Wave radiator valves, `generic_thermostat`, Ecobee, Nest and any other `climate` entity. Celsius and Fahrenheit both work, and the UI follows your Home Assistant theme, language (English, German, Dutch, French, Spanish, Italian, Polish, Portuguese, Russian, Turkish and Simplified Chinese included) and 12/24-hour setting.
 
 | Overview | Edit a time block | Light theme |
 | --- | --- | --- |
@@ -46,7 +48,7 @@ Changes are saved immediately, like in the Tado app.
 ### How the schedule is applied
 
 - A thermostat only gets a command **when the wanted temperature changes**: at a block boundary, when Home/Away switches, or when you edit the current block. Back-to-back blocks with the same temperature (including across midnight) don't trigger anything. This keeps the number of commands low, which matters for cloud APIs with rate limits (such as Tado's).
-- **A manual change on the thermostat holds until the next block**, the same as Tado's "until next time block". To go back to the schedule right away, use the action `smart_heating_schedule.resume_schedule`.
+- **A manual change on the thermostat holds until the next block**, the same as Tado's "until next time block". The panel then shows **Restore schedule** on that thermostat to go back to the schedule right away; in automations, use the action `smart_heating_schedule.resume_schedule`. The scheduled temperature sensor has an `overridden` attribute that is true while a manual change is active.
 - After a restart, a block is only applied again if it isn't the block that was last applied, so restarts don't undo manual changes.
 - If a thermostat is unavailable, the block is applied as soon as it comes back. If a command fails, it is retried after 5 minutes and the error is shown in the panel.
 
@@ -87,7 +89,7 @@ For each scheduled thermostat (shown on the thermostat's own device page):
 | Entity | Description |
 | --- | --- |
 | `switch.<room>_smart_schedule` | Turns the schedule on or off |
-| `sensor.<room>_scheduled_temperature` | The temperature the schedule wants now (unknown during an Off block). Attributes: `profile`, `block_start`, `block_end`, `next_temperature`, `heating_off`, `pending`, `last_error` |
+| `sensor.<room>_scheduled_temperature` | The temperature the schedule wants now (unknown during an Off block). Attributes: `profile`, `block_start`, `block_end`, `next_temperature`, `heating_off`, `pending`, `overridden` (changed by hand), `last_error` |
 
 Global entities, on the *Smart Heating Schedule* service device:
 
@@ -153,6 +155,10 @@ npm run lint && npm test && npm run build
 
 The built bundle `custom_components/smart_heating_schedule/frontend/smart-heating-schedule-panel.js` is committed, so HACS users don't need Node. CI fails if it is out of date.
 
+### Translations
+
+The panel's texts are in `frontend/src/translations/<language>.ts`, and the setup screens, entities and actions are in `custom_components/smart_heating_schedule/translations/<language>.json`. English is the source. Every language must have every key with the same `{placeholders}`: the type check and tests on both sides fail otherwise. To add a language, copy `en.ts` and `en.json`, translate them, and register the new file in `frontend/src/localize.ts`. Corrections from native speakers are very welcome.
+
 ### Releasing
 
 1. Bump `version` in `custom_components/smart_heating_schedule/manifest.json`.
@@ -164,3 +170,5 @@ To get listed in the HACS default store, check that the *Validate* workflow pass
 ## License
 
 MIT
+
+This project is not affiliated with or endorsed by tado GmbH. tado° is a trademark of tado GmbH.

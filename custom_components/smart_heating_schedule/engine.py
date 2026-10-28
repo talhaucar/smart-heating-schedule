@@ -31,7 +31,7 @@ from homeassistant.helpers.start import async_at_started
 from homeassistant.util import dt as dt_util
 import voluptuous as vol
 
-from .climate_control import async_apply_temperature
+from .climate_control import async_apply_temperature, follows_temperature
 from .const import (
     CONF_PRESENCE_ENTITY,
     DEFAULT_PRESENCE_ENTITY,
@@ -82,6 +82,8 @@ class ScheduleEngine:
         self.profile: str = PROFILE_HOME
         self.segments: dict[str, Segment] = {}
         self.pending: set[str] = set()
+        self.overridden: set[str] = set()
+        self._sent_at: dict[str, datetime] = {}
         self.errors: dict[str, str] = {}
         self._started = False
         self._timers: dict[str, CALLBACK_TYPE] = {}
@@ -197,10 +199,9 @@ class ScheduleEngine:
             if room is None:
                 return
             segment = self._update_segment(entity_id, dt_util.now())
-            if segment is None or not self._started:
-                self._notify()
-                return
-            await self._async_apply(room, segment, reason)
+            if segment is not None and self._started:
+                await self._async_apply(room, segment, reason)
+            self._update_overridden(entity_id)
             self._notify()
 
     def _update_segment(self, entity_id: str, now: datetime) -> Segment | None:
@@ -257,13 +258,14 @@ class ScheduleEngine:
             return
 
         try:
-            await async_apply_temperature(
+            if await async_apply_temperature(
                 self.hass,
                 state,
                 segment.temperature,
                 self.store.unit,
                 Context(),
-            )
+            ):
+                self._sent_at[entity_id] = dt_util.utcnow()
         except (HomeAssistantError, vol.Invalid, ValueError) as err:
             _LOGGER.warning("Could not apply schedule to %s: %s", entity_id, err)
             self.errors[entity_id] = str(err)
@@ -311,6 +313,37 @@ class ScheduleEngine:
             and new_state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN)
         ):
             self.hass.async_create_task(self.async_evaluate(entity_id, Reason.RETRY))
+        elif self._update_overridden(entity_id):
+            self._notify()
+
+    def _update_overridden(self, entity_id: str) -> bool:
+        """Check whether a room was changed by hand; return whether that changed."""
+        was_overridden = entity_id in self.overridden
+        if self._is_overridden(entity_id):
+            self.overridden.add(entity_id)
+        else:
+            self.overridden.discard(entity_id)
+        return was_overridden != (entity_id in self.overridden)
+
+    def _is_overridden(self, entity_id: str) -> bool:
+        """Return whether the thermostat no longer follows the block it was set to."""
+        segment = self.segments.get(entity_id)
+        last = self.store.last_applied.get(entity_id)
+        state = self.hass.states.get(entity_id)
+        sent_at = self._sent_at.get(entity_id)
+        return (
+            self._started
+            and segment is not None
+            and entity_id not in self.pending
+            and last is not None
+            and last["key"] == f"{self.profile}|{segment.key}"
+            and state is not None
+            and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN)
+            # Cloud thermostats can report the new setpoint a while after the
+            # command: only a state reported since then counts as a change.
+            and (sent_at is None or state.last_updated >= sent_at)
+            and not follows_temperature(state, segment.temperature, self.store.unit)
+        )
 
     # ------------------------------------------------------------------
     # Room management (used by the panel and services)
@@ -339,6 +372,8 @@ class ScheduleEngine:
         self.segments.pop(entity_id, None)
         self.store.last_applied.pop(entity_id, None)
         self.pending.discard(entity_id)
+        self.overridden.discard(entity_id)
+        self._sent_at.pop(entity_id, None)
         self.errors.pop(entity_id, None)
         self.store.async_schedule_save()
         self.store.async_schedule_runtime_save()
@@ -467,6 +502,7 @@ class ScheduleEngine:
             "end": segment.end.isoformat() if segment and segment.end else None,
             "next_temperature": segment.next_temperature if segment and segment.end else None,
             "pending": entity_id in self.pending,
+            "overridden": entity_id in self.overridden,
             "last_error": self.errors.get(entity_id),
         }
 

@@ -101,6 +101,44 @@ async def test_transition_and_manual_change(
     assert set_temperature[-1].data["temperature"] == 20.0
 
 
+async def test_manual_change_is_overridden_until_resumed(
+    hass: HomeAssistant, config_entry: MockConfigEntry, freezer, calls, heat_state
+) -> None:
+    climate(hass, heat_state)
+    await setup_integration(hass, config_entry)
+    freezer.tick()
+    await add_room(hass)
+    engine = config_entry.runtime_data
+    sensor = "sensor.living_room_scheduled_temperature"
+    set_temperature, _ = calls
+
+    # The thermostat has not reported the new setpoint yet: not a manual change.
+    assert not engine.room_status(CLIMATE)["overridden"]
+    freezer.tick()
+    climate(hass, {**heat_state, "temperature": 20})
+    assert not engine.room_status(CLIMATE)["overridden"]
+
+    climate(hass, {**heat_state, "temperature": 23})
+    await hass.async_block_till_done()
+    assert engine.room_status(CLIMATE)["overridden"]
+    assert hass.states.get(sensor).attributes["overridden"]
+
+    freezer.tick()
+    await engine.async_resume(CLIMATE)
+    await hass.async_block_till_done()
+    assert set_temperature[-1].data["temperature"] == 20.0
+    assert not engine.room_status(CLIMATE)["overridden"]
+    assert not hass.states.get(sensor).attributes["overridden"]
+
+    # A manual change ends at the next block.
+    freezer.tick()
+    climate(hass, {**heat_state, "temperature": 20})
+    climate(hass, {**heat_state, "temperature": 22})
+    assert engine.room_status(CLIMATE)["overridden"]
+    await move_to(hass, freezer, datetime(2026, 10, 26, 22, 0, 1, tzinfo=TZ))
+    assert not engine.room_status(CLIMATE)["overridden"]
+
+
 async def test_restart_keeps_manual_change(
     hass: HomeAssistant, config_entry: MockConfigEntry, calls, heat_state
 ) -> None:
