@@ -29,6 +29,7 @@ export class DayCard extends LitElement {
   @property({ type: Boolean, reflect: true }) expanded = false;
   @property({ type: Boolean }) readOnly = false;
   @property({ type: Boolean }) canPaste = false;
+  @property({ type: Boolean }) hideCopyPaste = false;
   @property({ attribute: false }) now: number | null = null;
   @property({ attribute: false }) localize!: Localize;
 
@@ -89,19 +90,21 @@ export class DayCard extends LitElement {
 
   private _renderActions() {
     return html`<div class="actions">
-      <ha-icon-button
-        class="primary"
-        .path=${mdiContentCopy}
-        .label=${this.localize("room.copy_day")}
-        @click=${() => fireEvent(this, "copy-day")}
-      ></ha-icon-button>
-      <ha-icon-button
-        class="primary"
-        .path=${mdiContentPaste}
-        .label=${this.localize("room.paste_day")}
-        ?disabled=${!this.canPaste}
-        @click=${() => fireEvent(this, "paste-day")}
-      ></ha-icon-button>
+      ${this.hideCopyPaste
+        ? nothing
+        : html`<ha-icon-button
+              class="primary"
+              .path=${mdiContentCopy}
+              .label=${this.localize("room.copy_day")}
+              @click=${() => fireEvent(this, "copy-day")}
+            ></ha-icon-button>
+            <ha-icon-button
+              class="primary"
+              .path=${mdiContentPaste}
+              .label=${this.localize("room.paste_day")}
+              ?disabled=${!this.canPaste}
+              @click=${() => fireEvent(this, "paste-day")}
+            ></ha-icon-button>`}
       <span class="spacer"></span>
       <button class="text-button" @click=${() => fireEvent(this, "add-block")}>
         ${this.localize("room.add_block")}

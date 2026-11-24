@@ -46,6 +46,9 @@ export const zhHans: Strings = {
     off: "关闭",
     overridden: "已手动更改",
     resume: "恢复日程",
+    schedule_mode: "日程模式",
+    every_day: "每天",
+    by_day: "按天",
   },
   block: {
     edit: "编辑时间段",
@@ -77,5 +80,8 @@ export const zhHans: Strings = {
   error: {
     save: "无法保存：{error}",
     resume: "无法恢复日程：{error}",
+    schedule_mode: "日程模式",
+    every_day: "每天",
+    by_day: "按天",
   },
 };

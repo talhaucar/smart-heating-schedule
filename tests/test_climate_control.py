@@ -35,11 +35,13 @@ async def test_skips_when_already_there(hass: HomeAssistant, heat_state: dict) -
 
 
 async def test_switches_out_of_auto_and_off(hass: HomeAssistant, heat_state: dict) -> None:
-    calls = async_mock_service(hass, "climate", "set_temperature")
+    temp_calls = async_mock_service(hass, "climate", "set_temperature")
+    mode_calls = async_mock_service(hass, "climate", "set_hvac_mode")
     for mode in (HVACMode.AUTO, HVACMode.OFF):
         state = set_state(hass, mode, **heat_state)
         assert await async_apply_temperature(hass, state, 17, "°C")
-        assert calls[-1].data["hvac_mode"] == HVACMode.HEAT
+        assert mode_calls[-1].data == {"entity_id": ENTITY, "hvac_mode": HVACMode.HEAT}
+    assert not temp_calls
 
 
 async def test_clamps_to_limits(hass: HomeAssistant, heat_state: dict) -> None:
@@ -88,17 +90,20 @@ async def test_range_only_device(hass: HomeAssistant) -> None:
 
 
 async def test_auto_only_device(hass: HomeAssistant, heat_state: dict) -> None:
-    calls = async_mock_service(hass, "climate", "set_temperature")
+    temp_calls = async_mock_service(hass, "climate", "set_temperature")
+    mode_calls = async_mock_service(hass, "climate", "set_hvac_mode")
     state = set_state(
         hass, HVACMode.OFF, **{**heat_state, "hvac_modes": [HVACMode.OFF, HVACMode.AUTO]}
     )
     await async_apply_temperature(hass, state, 19, "°C")
-    assert calls[0].data["hvac_mode"] == HVACMode.AUTO
+    assert mode_calls[0].data == {"entity_id": ENTITY, "hvac_mode": HVACMode.AUTO}
+    assert temp_calls[0].data == {"entity_id": ENTITY, "temperature": 19}
     state = set_state(
         hass, HVACMode.AUTO, **{**heat_state, "hvac_modes": [HVACMode.OFF, HVACMode.AUTO]}
     )
     await async_apply_temperature(hass, state, 19, "°C")
-    assert "hvac_mode" not in calls[1].data
+    assert len(mode_calls) == 1
+    assert temp_calls[1].data == {"entity_id": ENTITY, "temperature": 19}
 
 
 async def test_fahrenheit_defaults(hass: HomeAssistant) -> None:

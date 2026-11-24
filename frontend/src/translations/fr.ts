@@ -47,6 +47,9 @@ export const fr: Strings = {
     off: "Éteint",
     overridden: "Modifié manuellement",
     resume: "Reprendre le programme",
+    schedule_mode: "Mode de programme",
+    every_day: "Tous les jours",
+    by_day: "Par jour",
   },
   block: {
     edit: "Modifier la plage horaire",
@@ -78,5 +81,8 @@ export const fr: Strings = {
   error: {
     save: "Échec de l'enregistrement : {error}",
     resume: "Impossible de reprendre le programme : {error}",
+    schedule_mode: "Mode de programme",
+    every_day: "Tous les jours",
+    by_day: "Par jour",
   },
 };

@@ -48,6 +48,9 @@ export const pt: Strings = {
     off: "Desligado",
     overridden: "Alterado manualmente",
     resume: "Retomar programação",
+    schedule_mode: "Modo de horário",
+    every_day: "Todos os dias",
+    by_day: "Por dia",
   },
   block: {
     edit: "Editar faixa de horário",
@@ -79,5 +82,8 @@ export const pt: Strings = {
   error: {
     save: "Não foi possível salvar: {error}",
     resume: "Não foi possível retomar a programação: {error}",
+    schedule_mode: "Modo de horário",
+    every_day: "Todos os dias",
+    by_day: "Por dia",
   },
 };

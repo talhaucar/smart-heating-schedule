@@ -47,6 +47,9 @@ export const it: Strings = {
     off: "Spento",
     overridden: "Modificato manualmente",
     resume: "Riprendi programmazione",
+    schedule_mode: "Modalità programma",
+    every_day: "Tutti i giorni",
+    by_day: "Per giorno",
   },
   block: {
     edit: "Modifica fascia oraria",
@@ -78,5 +81,8 @@ export const it: Strings = {
   error: {
     save: "Salvataggio non riuscito: {error}",
     resume: "Impossibile riprendere la programmazione: {error}",
+    schedule_mode: "Modalità programma",
+    every_day: "Tutti i giorni",
+    by_day: "Per giorno",
   },
 };

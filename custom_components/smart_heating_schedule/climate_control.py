@@ -88,33 +88,30 @@ def _service_calls(
     temperature = min(max(temperature, min_temp), max_temp)
     features = ClimateEntityFeature(attrs.get(ATTR_SUPPORTED_FEATURES, 0))
     hvac_mode = _heating_mode(state)
-    data: dict[str, object] = {ATTR_ENTITY_ID: entity_id}
+    calls: list[tuple[str, dict[str, object]]] = []
+    if hvac_mode is not None:
+        calls.append(
+            (SERVICE_SET_HVAC_MODE, {ATTR_ENTITY_ID: entity_id, ATTR_HVAC_MODE: hvac_mode})
+        )
 
+    data: dict[str, object] = {ATTR_ENTITY_ID: entity_id}
     if ClimateEntityFeature.TARGET_TEMPERATURE in features:
-        if hvac_mode is None and attrs.get(ATTR_TEMPERATURE) == temperature:
-            return []
-        data[ATTR_TEMPERATURE] = temperature
+        if attrs.get(ATTR_TEMPERATURE) != temperature:
+            data[ATTR_TEMPERATURE] = temperature
+            calls.append((SERVICE_SET_TEMPERATURE, data))
     elif ClimateEntityFeature.TARGET_TEMPERATURE_RANGE in features:
         high = attrs.get(ATTR_TARGET_TEMP_HIGH)
         if high is None or high < temperature + step:
             high = min(max_temp, temperature + max(step, 1.0))
         if (
-            hvac_mode is None
-            and attrs.get(ATTR_TARGET_TEMP_LOW) == temperature
-            and attrs.get(ATTR_TARGET_TEMP_HIGH) == high
+            attrs.get(ATTR_TARGET_TEMP_LOW) != temperature
+            or attrs.get(ATTR_TARGET_TEMP_HIGH) != high
         ):
-            return []
-        data[ATTR_TARGET_TEMP_LOW] = temperature
-        data[ATTR_TARGET_TEMP_HIGH] = high
-    elif hvac_mode is None:
-        # No setpoint support and already heating: nothing we can change.
-        return []
-    else:
-        return [(SERVICE_SET_HVAC_MODE, {ATTR_ENTITY_ID: entity_id, ATTR_HVAC_MODE: hvac_mode})]
+            data[ATTR_TARGET_TEMP_LOW] = temperature
+            data[ATTR_TARGET_TEMP_HIGH] = high
+            calls.append((SERVICE_SET_TEMPERATURE, data))
 
-    if hvac_mode is not None:
-        data[ATTR_HVAC_MODE] = hvac_mode
-    return [(SERVICE_SET_TEMPERATURE, data)]
+    return calls
 
 
 def follows_temperature(state: State, temperature: float | None, unit: str) -> bool:

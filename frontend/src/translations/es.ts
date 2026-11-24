@@ -47,6 +47,9 @@ export const es: Strings = {
     off: "Apagado",
     overridden: "Cambiado manualmente",
     resume: "Reanudar horario",
+    schedule_mode: "Modo de horario",
+    every_day: "Todos los días",
+    by_day: "Por días",
   },
   block: {
     edit: "Editar franja horaria",
@@ -78,5 +81,8 @@ export const es: Strings = {
   error: {
     save: "No se pudo guardar: {error}",
     resume: "No se pudo reanudar el horario: {error}",
+    schedule_mode: "Modo de horario",
+    every_day: "Todos los días",
+    by_day: "Por días",
   },
 };

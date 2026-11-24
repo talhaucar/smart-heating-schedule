@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  allDaysEqual,
   deleteBlock,
   insertBlock,
   orderedDays,
   toSegments,
   updateBlock,
   validateDay,
+  withAllDays,
   withDay,
 } from "../src/schedule";
 import type { Block, WeekSchedule } from "../src/types";
@@ -102,6 +104,22 @@ describe("week helpers", () => {
     expect(updated.days.wed).toEqual(day(["00:00", 15]));
     expect(updated.days.tue).toBe(tado);
     expect(week.days.wed).toBe(tado);
+  });
+
+  it("replaces all days with independent copies", () => {
+    const replacement = day(["00:00", null], ["08:00", 22], ["22:00", null]);
+    const updated = withAllDays(week, replacement);
+    expect(allDaysEqual(updated)).toBe(true);
+    expect(updated.days.mon).toEqual(replacement);
+    expect(updated.days.sun).toEqual(replacement);
+    expect(updated.days.mon).not.toBe(updated.days.tue);
+    expect(week.days.mon).toBe(tado);
+  });
+
+  it("detects when all days are equal or differ", () => {
+    expect(allDaysEqual(week)).toBe(true);
+    const modified = withDay(week, "sat", day(["00:00", 21]));
+    expect(allDaysEqual(modified)).toBe(false);
   });
 
   it("orders days from the first weekday", () => {

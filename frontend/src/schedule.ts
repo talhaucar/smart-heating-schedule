@@ -122,6 +122,16 @@ export const withDay = (week: WeekSchedule, day: string, blocks: Block[]): WeekS
   days: { ...week.days, [day]: blocks },
 });
 
+export const withAllDays = (week: WeekSchedule, blocks: Block[]): WeekSchedule => ({
+  ...week,
+  days: Object.fromEntries(WEEKDAYS.map((day) => [day, blocks.map((block) => ({ ...block }))])),
+});
+
+export const allDaysEqual = (week: WeekSchedule): boolean => {
+  const first = JSON.stringify(week.days[WEEKDAYS[0]]);
+  return WEEKDAYS.every((day) => JSON.stringify(week.days[day]) === first);
+};
+
 /** The days of the week in display order, starting on the locale's first weekday (Monday = 0). */
 export const orderedDays = (firstWeekday: number): string[] => [
   ...WEEKDAYS.slice(firstWeekday),

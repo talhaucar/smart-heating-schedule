@@ -47,6 +47,9 @@ export const nl: Strings = {
     off: "Uit",
     overridden: "Handmatig aangepast",
     resume: "Schema hervatten",
+    schedule_mode: "Schemamodus",
+    every_day: "Elke dag",
+    by_day: "Per dag",
   },
   block: {
     edit: "Tijdsblok bewerken",
@@ -78,5 +81,8 @@ export const nl: Strings = {
   error: {
     save: "Opslaan mislukt: {error}",
     resume: "Schema hervatten mislukt: {error}",
+    schedule_mode: "Schemamodus",
+    every_day: "Elke dag",
+    by_day: "Per dag",
   },
 };

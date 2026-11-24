@@ -47,6 +47,9 @@ export const de: Strings = {
     off: "Aus",
     overridden: "Manuell geändert",
     resume: "Zeitplan fortsetzen",
+    schedule_mode: "Zeitplanmodus",
+    every_day: "Jeden Tag",
+    by_day: "Pro Tag",
   },
   block: {
     edit: "Zeitblock bearbeiten",
@@ -78,5 +81,8 @@ export const de: Strings = {
   error: {
     save: "Speichern fehlgeschlagen: {error}",
     resume: "Zeitplan konnte nicht fortgesetzt werden: {error}",
+    schedule_mode: "Zeitplanmodus",
+    every_day: "Jeden Tag",
+    by_day: "Pro Tag",
   },
 };

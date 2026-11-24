@@ -47,6 +47,9 @@ export const pl: Strings = {
     off: "Wyłączone",
     overridden: "Zmienione ręcznie",
     resume: "Wznów harmonogram",
+    schedule_mode: "Tryb harmonogramu",
+    every_day: "Codziennie",
+    by_day: "Według dni",
   },
   block: {
     edit: "Edytuj przedział czasu",
@@ -78,5 +81,8 @@ export const pl: Strings = {
   error: {
     save: "Nie udało się zapisać: {error}",
     resume: "Nie udało się wznowić harmonogramu: {error}",
+    schedule_mode: "Tryb harmonogramu",
+    every_day: "Codziennie",
+    by_day: "Według dni",
   },
 };

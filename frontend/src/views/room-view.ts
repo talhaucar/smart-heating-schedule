@@ -1,4 +1,12 @@
-import { mdiArrowLeft, mdiCalendarExport, mdiDeleteOutline, mdiHome, mdiWalk } from "@mdi/js";
+import {
+  mdiArrowLeft,
+  mdiCalendar,
+  mdiCalendarExport,
+  mdiCalendarWeek,
+  mdiDeleteOutline,
+  mdiHome,
+  mdiWalk,
+} from "@mdi/js";
 import { css, html, LitElement, nothing, type PropertyValues } from "lit";
 import { property, state } from "lit/decorators.js";
 
@@ -12,7 +20,7 @@ import "../dialogs/entity-picker-dialog";
 import { firstWeekday, uses12h, weekdayName, zonedTime } from "../format";
 import { canTurnOff, entityName, navigate, safeCustomElement, showToast } from "../ha";
 import type { Localize } from "../localize";
-import { orderedDays, WEEKDAYS, withDay } from "../schedule";
+import { allDaysEqual, orderedDays, WEEKDAYS, withAllDays, withDay } from "../schedule";
 import { roomStatusText } from "../status";
 import { renderSwitch, sharedStyles, toolbarStyles } from "../styles";
 import { limitsFor } from "../temperature";
@@ -32,6 +40,8 @@ export class RoomView extends LitElement {
   @property({ attribute: false }) localize!: Localize;
 
   @state() private _profile: Profile = "home";
+  @state() private _dailyMode = false;
+  @state() private _dailyExpanded = true;
   @state() private _expanded = new Set<string>();
   @state() private _optimistic: Partial<Record<Profile, WeekSchedule>> = {};
   @state() private _canPaste = clipboard !== null;
@@ -48,6 +58,7 @@ export class RoomView extends LitElement {
       if (!this._initialized) {
         this._initialized = true;
         this._expanded = new Set([this._today]);
+        this._dailyMode = allDaysEqual(this._week);
       }
     }
   }
@@ -195,30 +206,67 @@ export class RoomView extends LitElement {
           @value-changed=${(ev: CustomEvent) => {
             this._profile = ev.detail.value;
             this._expanded = new Set([this._today]);
+            this._dailyMode = allDaysEqual(this._week);
           }}
         ></shs-segment-control>
 
-        ${orderedDays(firstWeekday(this.hass)).map((day) => {
-          const blocks = week.days[day];
-          return html`<shs-day-card
-            .heading=${this._dayLabel(day)}
-            .blocks=${blocks}
-            .unit=${unit}
-            .step=${limits.step}
-            .language=${language}
-            .h12=${h12}
-            .expanded=${this._expanded.has(day)}
-            .readOnly=${readOnly}
-            .canPaste=${this._canPaste}
-            .now=${day === today && this._profile === this.state.presence.profile ? now.minutes : null}
-            .localize=${this.localize}
-            @toggle=${() => this._toggle(day)}
-            @edit-block=${(ev: CustomEvent) => (this._blockDialog = { day, index: ev.detail.index })}
-            @add-block=${() => (this._blockDialog = { day, index: null })}
-            @copy-day=${() => this._copyDay(blocks)}
-            @paste-day=${() => clipboard && this._saveWeek(withDay(week, day, clipboard))}
-          ></shs-day-card>`;
-        })}
+        <shs-segment-control
+          .label=${this.localize("room.schedule_mode")}
+          .value=${this._dailyMode ? "daily" : "weekly"}
+          .options=${[
+            { value: "daily", label: this.localize("room.every_day"), icon: mdiCalendar },
+            { value: "weekly", label: this.localize("room.by_day"), icon: mdiCalendarWeek },
+          ]}
+          @value-changed=${(ev: CustomEvent) => {
+            const daily = ev.detail.value === "daily";
+            this._dailyMode = daily;
+            if (daily) {
+              this._dailyExpanded = true;
+              if (!readOnly && !allDaysEqual(week)) {
+                this._saveWeek(withAllDays(week, week.days[today]));
+              }
+            }
+          }}
+        ></shs-segment-control>
+
+        ${this._dailyMode
+          ? html`<shs-day-card
+              .heading=${this.localize("room.every_day")}
+              .blocks=${week.days[today]}
+              .unit=${unit}
+              .step=${limits.step}
+              .language=${language}
+              .h12=${h12}
+              .expanded=${this._dailyExpanded}
+              .readOnly=${readOnly}
+              .hideCopyPaste=${true}
+              .now=${this._profile === this.state.presence.profile ? now.minutes : null}
+              .localize=${this.localize}
+              @toggle=${() => (this._dailyExpanded = !this._dailyExpanded)}
+              @edit-block=${(ev: CustomEvent) => (this._blockDialog = { day: today, index: ev.detail.index })}
+              @add-block=${() => (this._blockDialog = { day: today, index: null })}
+            ></shs-day-card>`
+          : orderedDays(firstWeekday(this.hass)).map((day) => {
+              const blocks = week.days[day];
+              return html`<shs-day-card
+                .heading=${this._dayLabel(day)}
+                .blocks=${blocks}
+                .unit=${unit}
+                .step=${limits.step}
+                .language=${language}
+                .h12=${h12}
+                .expanded=${this._expanded.has(day)}
+                .readOnly=${readOnly}
+                .canPaste=${this._canPaste}
+                .now=${day === today && this._profile === this.state.presence.profile ? now.minutes : null}
+                .localize=${this.localize}
+                @toggle=${() => this._toggle(day)}
+                @edit-block=${(ev: CustomEvent) => (this._blockDialog = { day, index: ev.detail.index })}
+                @add-block=${() => (this._blockDialog = { day, index: null })}
+                @copy-day=${() => this._copyDay(blocks)}
+                @paste-day=${() => clipboard && this._saveWeek(withDay(week, day, clipboard))}
+              ></shs-day-card>`;
+            })}
       </div>
 
       <shs-block-dialog
@@ -235,7 +283,9 @@ export class RoomView extends LitElement {
         @save=${(ev: CustomEvent) => {
           const day = this._blockDialog!.day;
           this._blockDialog = null;
-          this._saveWeek(withDay(week, day, ev.detail.blocks));
+          this._saveWeek(
+            this._dailyMode ? withAllDays(week, ev.detail.blocks) : withDay(week, day, ev.detail.blocks),
+          );
         }}
       ></shs-block-dialog>
 

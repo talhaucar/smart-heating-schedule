@@ -47,6 +47,9 @@ export const ru: Strings = {
     off: "Выкл.",
     overridden: "Изменено вручную",
     resume: "Возобновить расписание",
+    schedule_mode: "Режим расписания",
+    every_day: "Каждый день",
+    by_day: "По дням",
   },
   block: {
     edit: "Изменить интервал",
@@ -78,5 +81,8 @@ export const ru: Strings = {
   error: {
     save: "Не удалось сохранить: {error}",
     resume: "Не удалось возобновить расписание: {error}",
+    schedule_mode: "Режим расписания",
+    every_day: "Каждый день",
+    by_day: "По дням",
   },
 };

@@ -47,6 +47,9 @@ export const tr: Strings = {
     off: "Kapalı",
     overridden: "Elle değiştirildi",
     resume: "Programa devam et",
+    schedule_mode: "Program modu",
+    every_day: "Her gün",
+    by_day: "Güne göre",
   },
   block: {
     edit: "Zaman dilimini düzenle",
@@ -78,5 +81,8 @@ export const tr: Strings = {
   error: {
     save: "Kaydedilemedi: {error}",
     resume: "Programa devam edilemedi: {error}",
+    schedule_mode: "Program modu",
+    every_day: "Her gün",
+    by_day: "Güne göre",
   },
 };

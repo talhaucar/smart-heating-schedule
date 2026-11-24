@@ -45,6 +45,9 @@ export const en = {
     off: "Off",
     overridden: "Changed by hand",
     resume: "Restore schedule",
+    schedule_mode: "Schedule mode",
+    every_day: "Every day",
+    by_day: "By day",
   },
   block: {
     edit: "Edit time block",
@@ -76,6 +79,9 @@ export const en = {
   error: {
     save: "Could not save: {error}",
     resume: "Could not restore the schedule: {error}",
+    schedule_mode: "Schedule mode",
+    every_day: "Every day",
+    by_day: "By day",
   },
 };
 
